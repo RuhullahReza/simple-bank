@@ -23,7 +23,10 @@ sqlc:
     docker run --rm -v ${pwd}:/src -w /src kjconroy/sqlc generate
 
 test:
-	go test -v -cover ./...
+	go test -v -cover -short ./...
+
+start:
+	docker run --name simplebank -p 8080:8080 -e GIN_MODE=release simplebank:latest
 
 setup:
 	sudo daemonize /usr/bin/unshare --fork --pid --mount-proc /lib/systemd/systemd --system-unit=basic.target
@@ -32,4 +35,14 @@ setup:
 mock:
 	mockgen -package mockdb -destination db/mock/store.go github.com/RuhullahReza/simplebank/db/sqlc Store
 
-.PHONY: postgres createdb dropdb migrateup migrateup1 migratedown migratedown1 test sqlc setup mock
+proto:
+	protoc --proto_path=proto --go_out=pb --go_opt=paths=source_relative \
+	--go-grpc_out=pb --go-grpc_opt=paths=source_relative \
+	--grpc-gateway_out=pb --grpc-gateway_opt=paths=source_relative \
+	--openapiv2_out=doc/swagger --openapiv2_opt=allow_merge=true \
+	proto/*.proto
+
+redis:
+	docker run --name redis -p 6379:6379 -d redis:7-alpine
+
+.PHONY: postgres createdb dropdb migrateup migrateup1 migratedown migratedown1 test sqlc setup mock start proto redis
